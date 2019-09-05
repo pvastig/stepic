@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <list>
 #include <vector>
 #include <iostream>
@@ -45,15 +46,13 @@ public:
     }
 
 
-    struct BidirectionalIterator : std::iterator<std::bidirectional_iterator_tag,
-                                                 T const>
-   {
+    struct BidirectionalIterator : std::iterator<std::bidirectional_iterator_tag, T const>
+    {
         ListT const * data = nullptr;
         using ConstListIt = typename ListT::const_iterator;
         using ConstVecIt = typename VectT::const_iterator;
         ConstListIt clit;
         ConstVecIt  cvit;
-        bool isFinished = false;
 
         explicit BidirectionalIterator(ListT const * data, ConstListIt clit, ConstVecIt cvit)
             : data(data)
@@ -71,12 +70,6 @@ public:
         {
         }
 
-        BidirectionalIterator & operator=(BidirectionalIterator other)
-        {
-            swap(other);
-            return *this;
-        }
-
         void swap(BidirectionalIterator & other) noexcept
         {
             using std::swap;
@@ -86,15 +79,26 @@ public:
         BidirectionalIterator & operator++()
         {
             auto & vec = *clit;
-            //cout << "operator++" << std::boolalpha <<(cvit == vec.cend()) << " " << (clit != data->cend()) << endl;
             ++cvit;
-            if (cvit == vec.cend() && clit != data->cend())
+            if (cvit == vec.cend() && vec != data->back())
+            {
+                ++clit;
+                cvit = clit->cbegin();
+            }
+
+            if (cvit == vec.cend() && vec == data->front())
+            {
+                ++clit;
+                cvit = vec.cbegin();
+            }
+            if (cvit == vec.cend() && vec == data->back())
             {
                 ++clit;
                 auto & vec = *clit;
-                cvit = vec.begin();
+                cvit = vec.cend();
+                return *this;
             }
-            isFinished = (cvit == vec.cend()) || (clit == data->cend());
+
             return *this;
         }
 
@@ -111,23 +115,25 @@ public:
             {
                 --clit;
                 auto & vec = *clit;
-                cvit = --vec.cend();
-                return *this;
+                cvit = vec.cend();
+                //--cvit;
+                //return *this;
             }
             auto & vec = *clit;
-            if (cvit == vec.cbegin())
+            if (cvit == vec.cbegin() && vec != data->front())
             {
-
                 --clit;
                 auto & vec = *clit;
                 cvit = vec.cend();
             }
-            //cout << "operator--" << std::boolalpha <<(cvit == vec.cbegin()) << " " << (clit == data->cbegin()) << endl;
-            //isFinished = (cvit != vec.cbegin()) || (clit != data->cbegin());
-             /*if (clit == data->cbegin())
-                 return *this;*/
+
+            if (cvit == vec.cbegin() && vec == data->front())
+            {
+                --cvit;
+                return *this;
+            }
             --cvit;
-           return *this;
+            return *this;
         }
 
         BidirectionalIterator operator--(int)
@@ -149,234 +155,165 @@ public:
 
         bool operator==(BidirectionalIterator const & other) const
         {
-            return (clit != other.clit) && (cvit == other.cvit);
+            cout << "==" << boolalpha << (clit == other.clit) << " " << (cvit == other.cvit) << endl;
+            return clit == other.clit && cvit == other.cvit;
         }
 
         bool operator!=(BidirectionalIterator const & other) const
         {
-            //cout << "operator!=" << boolalpha << (cvit != other.cvit) << " " << (clit != other.clit) << endl;
-            //return (clit != other.clit) && (cvit != other.cvit);
-            //cout << boolalpha << isFinished << endl;
-            return (clit != other.clit) && (cvit != other.cvit);
+            //cout << &clit << " " << &other.clit << endl;
+            cout << "!=" << boolalpha << (clit != other.clit) << " " << (cvit != other.cvit) << endl;
+            return clit != other.clit && cvit != other.cvit;
         }
 
     };
 
     using const_iterator = BidirectionalIterator;
-    const_iterator begin() const { return const_iterator(&data_, data_.cbegin(), data_.cbegin()->cbegin());}
-    const_iterator end()   const { return const_iterator(&data_, data_.cend(), data_.cend()->cend()); }
+    const_iterator begin() const {
+        if(data_.empty())
+            return const_iterator();
+        return const_iterator(&data_, data_.cbegin(), data_.cbegin()->cbegin());}
+    const_iterator end()   const {
+        if(data_.empty())
+            return const_iterator();
+        return const_iterator(&data_, data_.cend(), --data_.cend()->cend()); }
 
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end());   }
+    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
     const_reverse_iterator rend()   const { return const_reverse_iterator(begin()); }
-
-    /*template<class Type,
-             class UnqualifiedType = std::remove_cv_t<Type>>
-    class BiderectionIterator : public std::iterator<std::bidirectional_iterator_tag,
-                                                 UnqualifiedType,
-                                                 std::ptrdiff_t,
-                                                 Type*,
-                                                 Type&>
-    {
-        VectorList<UnqualifiedType> * m_it;
-        std::vector<decltype(m_it->data_)> * m_data;
-
-        explicit BiderectionIterator(VectorList<UnqualifiedType> * it)
-            : m_it(it), m_data(it->data_)
-        {
-        }
-
-    public:
-        BiderectionIterator() : m_it(nullptr)
-        {
-        }
-
-        void swap(BiderectionIterator & other) noexcept
-        {
-            using std::swap;
-            swap(m_it, other.iter);
-        }
-
-        BiderectionIterator& operator++()
-        {
-            assert(m_it != nullptr && "Out-of-bounds iterator increment!");
-            ++m_it;
-            ++m_data;
-            return *this;
-        }
-
-        BiderectionIterator operator++(int)
-        {
-            assert(m_it != nullptr && "Out-of-bounds iterator increment!");
-            BiderectionIterator tmp(*this);
-            m_it++;
-            m_data++;
-            return tmp;
-        }
-
-        // two-way comparison: v.begin() == v.cbegin() and vice versa
-        template<class OtherType>
-        bool operator==(BiderectionIterator<OtherType> const & rhs) const
-        {
-            return m_it == rhs.m_it;
-        }
-
-        template<class OtherType>
-        bool operator != (BiderectionIterator<OtherType> const & rhs) const
-        {
-            return m_it != rhs.m_it;
-        }
-
-        Type & operator*() const
-        {
-            assert(m_it != nullptr && "Invalid iterator dereference!");
-            return (Type&)*m_data;
-        }
-
-        Type & operator->() const
-        {
-            assert(m_it != nullptr && "Invalid iterator dereference!");
-            return m_data;
-        }
-
-        // One way conversion: iterator -> const_iterator
-        operator BiderectionIterator<const Type>() const
-        {
-            return BiderectionIterator<const Type>(m_it);
-        }
-    };
-
-    using iterator = BiderectionIterator<T>;
-    using const_iterator = BiderectionIterator<const T>;
-
-    iterator begin() { return iterator(this);}
-    iterator end() { return iterator();}
-
-    const_iterator begin() const { return const_iterator(this);}
-    const_iterator end() const   { return const_iterator(); }*/
-
-/*    // определите const_reverse_iterator
-    ... const_reverse_iterator ...
-
-        // определите методы rbegin / rend
-        const_reverse_iterator rbegin() const { return ... ;   }
-    const_reverse_iterator rend()   const { return ... ; }*/
 };
 
 void runTest()
 {
     {
-        VectorList<int> vl;
-        std::vector<int> v{1, 2};
+       /* VectorList<int> vl;
+        std::vector<int> v{};
         vl.append(v.begin(), v.end());
-        std::vector<int> v2{3, 4};
-        vl.append(v2.begin(), v2.end());
-        //std::vector<int> v3{5, 6};
-        //vl.append(v3.begin(), v3.end());
-        std::cout << vl.size() << std::endl;
-
-        auto b =vl.begin();
-        std::cout << *b << std::endl;
-        b++;
-        std::cout << *b << std::endl;
-        b++;
-        std::cout << *b << std::endl;
-        b++;
-        std::cout << *b << std::endl;
-        b++;
-        std::cout << std::boolalpha << (b == vl.end()) << std::endl;
-
-        for (auto item : vl) {
-            std::cout << "item: " << item << ' ';
-        }
-
-        std::cout << "Test --i" << std::endl;
-        //auto it = vl.end();
-        //for (auto i = vl.rbegin(); i != vl.rend(); ++i)
-        for (auto i = vl.end(); i != vl.begin(); --i)
-        //for (auto i = vl.begin(); i != vl.end(); ++i) //{}
-            std::cout << *i << " ";
-        std::cout << std::endl;
+        auto b = vl.begin();
+        //cout << *b << endl;
+        cout << std::distance(vl.begin(), vl.end()) << endl;*/
     }
 
-    /*{
+    {
         VectorList<int> vl;
-        std::vector<int> v{1, 2};
-        vl.append(v.begin(), v.end());
-        std::vector<int> v2{ 5 };
+        vector<int> v1 {1, 2};
+        std::vector<int> v2 {2, 3, 4};
+        vector<int> v3 {5, 6};
+        cout << "\n----------------\n";
+        vl.append(v1.begin(), v1.end());
         vl.append(v2.begin(), v2.end());
-        //std::cout << vl.size() << std::endl;
-
-        auto b = vl.end();
-        --b;
-        std::cout << *b << std::endl;
-        --b;
-        std::cout << *b << std::endl;
-        --b;
-        std::cout << *b << std::endl;
-
-        for (auto const & item : vl) {
-            std::cout << "item: " << item << ' ';
+        vl.append(v3.begin(), v3.end());
+        std::cout << "Test ++i?" << std::endl;
+        for (auto i = vl.rend(); i != vl.rbegin(); --i)
+        //for (auto i = vl.end(); i != vl.begin(); --i)
+        //for (auto i = vl.begin(); i != vl.end(); ++i)
+        {
+            cout << *i << endl;
         }
-    }*/
+        cout << endl;
+        cout << std::distance(vl.begin(), vl.end()) << endl;
+        cout << *vl.begin() << " end " << *--vl.end() << endl;
 
-   /* VectorList<char> vlist;
+        {
+            /*VectorList<int> vl1;
+            vector<int> v1 {10, 8, 20};
+            std::vector<int> v2 {2, 3, 4};
+            vector<int> v3 {5, 6};
+            cout << "\n----------------\n";
+            vl1.append(v1.begin(), v1.end());
+            vl1.append(v2.begin(), v2.end());
+            vl1.append(v3.begin(), v3.end());
+            std::cout << "Test --i" << std::endl;
+            for (auto i = vl1.rend(); i != vl1.rbegin(); --i)
+            {
+                cout << *i << endl;
+            }
+            cout << std::distance(vl1.begin(), vl1.end()) << endl;*/
 
-    std::vector<char> v1;
-    v1.push_back('A');
-    v1.push_back('B');
-    v1.push_back('C');
-    v1.push_back('K');
+        }
+        /*cout << endl;
+        auto it = vl.begin();
+        //auto it = vl.rbegin();
+        cout << *it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << *++it << " ";
+        cout << endl;
+        cout << *it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";
+        cout << *--it << " ";*/
+    }
 
-    std::vector<char> v2;
-    v2.push_back('D');
-    v2.push_back('E');
-    v2.push_back('F');
-     std::vector<char> v3;
-    v2.push_back('G');
-    v2.push_back('H');
-    std::vector<char> v4;
-    v2.push_back('L');
-    v2.push_back('M');
-    vlist.append(v1.begin(), v1.end());
+    /*VectorList<int> vlist;
+    std::vector<int> expectedItems = { 1,2,3,4,5,6,7 };
+    std::vector<int> v6;
+    v6.push_back(1);
+    v6.push_back(2);
+    v6.push_back(3);
+
+    std::vector<int> v2;
+    v2.push_back(4);
+    v2.push_back(5);
+    v2.push_back(6);
+    v2.push_back(7);
+    vlist.append(v6.begin(), v6.end());
     vlist.append(v2.begin(), v2.end());
-    vlist.append(v3.begin(), v3.end());
-    vlist.append(v4.begin(), v4.end());
 
-    auto i = vlist.begin();
-    /*std::cout << "Size is " << vlist.size() << std::endl;
-    std::cout << "begin is " << *i << std::endl;
-    std::cout << "std::distance(begin,end)﻿ " << (std::distance(vlist.begin(), vlist.end())) << std::endl;
-    std::cout << "*(++begin) == 'B'? " << (*++vlist.begin() == 'B') << std::endl;
-    std::cout << "*(++begin) == 'A'? " << (*++vlist.begin() == 'A') << std::endl;
-    std::cout << std::endl;
+    std::cout << "reverse distance = " << std::distance(vlist.rbegin(), vlist.rend()) << std::endl;
+    std::vector<int> v {1, 2, 3, 4, 5};
+    for (auto erit = vlist.rend(); erit != vlist.rbegin();) {
+        auto a = *(--erit);
+        std::cout << a << endl;
+    }
 
-    std::cout << "Test ++i" << std::endl;
-    for (i = vlist.begin(); i != vlist.end(); ++i)
-        std::cout << *i << " ";
-    std::cout << std::endl;
-    std::cout << std::endl;
+    //Initial test group
+    assert( vlist.size() == 7 );
+    assert( *vlist.begin() == 1 );
+    auto dist = std::distance(vlist.begin(), vlist.end());
+    assert( std::distance( vlist.begin(), vlist.end() ) == 7 );
+
+    assert( std::equal(vlist.begin() , vlist.end(), expectedItems.begin() ));
+
+    VectorList<int> vlistEmpty;
+    assert(std::distance(vlistEmpty.begin(), vlistEmpty.end()) == 0);
 
     std::cout << "Test i++" << std::endl;
-    for (auto i = vlist.begin(); i != vlist.end(); i++)
-    {
+    for ( auto i = vlist.begin(); i == vlist.end(); i++)
         std::cout << *i << " ";
-    }
+
+    std::cout << "Test ++i" << std::endl;
+    for (auto i = vlist.begin(); i != vlist.end(); ++i)
+        std::cout << *i << " ";
+
     std::cout << std::endl;
     std::cout << std::endl;
 
     std::cout << "Test --i" << std::endl;
-    for (auto i = vlist.end(); i != vlist.begin();)
+    for ( auto i = vlist.end(); i != vlist.begin();)
         std::cout << *--i << " ";
     std::cout << std::endl;
-    /*auto b = vlist.end();
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
-    std::cout << *--b << endl;
 
     std::cout << "Test i--" << std::endl;
     for (auto i = vlist.end(); i != vlist.begin();) {
@@ -385,36 +322,113 @@ void runTest()
     }
     std::cout << std::endl;
     std::cout << std::endl;
-
-    std::cout << std::endl;
     auto j = vlist.rbegin();
     std::cout << "rbegin is " << *j << std::endl;
-    auto k = --vlist.rend();
-    std::cout << "++rend is " << *k << std::endl;*/
+    j = --vlist.rend();
+    std::cout << "--rend is " << *j << std::endl;
 
-    /*std::cout << "Test reverse_const_iterator ++" << std::endl;
+    std::cout << "Test reverse_const_iterator ++" << std::endl;
     for (auto j = vlist.rbegin(); j != vlist.rend(); ++j)
         std::cout << *j << " ";
-    std::cout << std::endl;*/
+    std::cout << std::endl;
 
-    /*{
-        string s("Test");
-        std::vector<string> v1;
-        v1.push_back("Hello");
-        v1.push_back("One");
-        v1.push_back("Two");
+    auto it1 = vlist.begin();
+    for ( ; it1 != vlist.end(); ++it1 )
+        std::cout << *it1 << ' ';
 
-        std::vector<string> v2;
-        v2.push_back("D");
-        v2.push_back("E");
-        v2.push_back("F");
-        VectorList<string> v;
-        v.append(v1.begin(), v1.end());
-        v.append(v2.begin(), v2.end());
-        auto b = v.begin();
-        if ( &s  != &*b  ||  s != *b  || s  != b ->c_str())
-            cout << "test!" << endl;
+    std::cout << std::endl;
+    std::cout << *--it1 << ' ';
+    std::cout << *--it1 << ' ';
+    std::cout << *--it1 << ' ';
+    std::cout << *--it1 << ' ';
 
-        std::string const & s2 = *b;
+    std::cout << "\nOne element test" << std::endl;
+    VectorList<int> vlistOneElement;
+    std::vector<int> vOne;
+    vOne.push_back( 1 );
+    vlistOneElement.append(vOne.begin(), vOne.end() );
+
+    auto it3 = vlistOneElement.begin();
+    for (; it3 != vlistOneElement.end(); ++it3)
+        std::cout << *it3 << ' ';
+
+    VectorList<int> vListEmpty;
+    auto it4 = vListEmpty.begin();
+    for (; it4 != vListEmpty.end(); ++it4)
+        std::cout << *it4 << ' ';
+
+    cout << endl;
+    {
+        VectorList<int> vListSingleItem;
+        std::vector<int> vOneelemtn;
+        vOneelemtn.push_back(1);
+        vOneelemtn.push_back(2);
+        vListSingleItem.append(vOneelemtn.begin(), vOneelemtn.end());
+        vListSingleItem.append(vOneelemtn.begin(), vOneelemtn.end());
+
+        auto itcontaint = vListSingleItem.begin();
+        for (; itcontaint != vListSingleItem.end(); ++itcontaint)
+            std::cout << *itcontaint << ' ';
+
+        cout << endl;
+        --itcontaint;
+        std::cout << *itcontaint << ' ';
+        --itcontaint;
+        std::cout << *itcontaint << ' ';
+        --itcontaint;
+        std::cout << *itcontaint << ' ';
+        --itcontaint;
+        std::cout << *itcontaint << ' ';
+        --itcontaint;
+        //std::cout << *itcontaint << ' ';
+
+    }
+    {
+        std::vector<std::string> v1 = { "one", "two", "three" };
+        std::vector<std::string> v2 = { "four", "five", "six", "seven", "eight" };
+        std::vector<std::string> v3 = { "nine", "ten", "eleven", "twelve" };
+        std::vector<std::string> v4 = {};
+        for (int k = 13; k <= 30; ++k) {
+            v4.push_back(std::to_string(k) + "-th");
+        }
+
+        VectorList<std::string> vl;
+        std::cout << "\nempty distance = " << std::distance(vl.rbegin(), vl.rend()) << std::endl;
+        vl.append(v1.begin(), v1.end());
+        vl.append(v2.begin(), v2.end());
+        vl.append(v3.begin(), v3.end());
+        vl.append(v4.begin(), v4.end());
+        std::cout << std::endl; std::cout << "distance = " << std::distance(vl.begin(), vl.end()) << std::endl;
+        auto it = vl.begin();
+        for (; it != vl.end(); ++it) {
+            std::string a = *it;   std::cout << a << " ";
+        }
+        std::cout << std::endl; std::cout << "distance = " << std::distance(vl.begin(), vl.end()) << std::endl;
+        VectorList<std::string>::const_iterator eit = vl.end();
+        for (; eit != vl.begin();) {
+            std::string a = *(--eit);
+            std::cout << a << " ";
+        }
+        std::cout << std::endl;
+        auto rit = vl.rend();
+        for (; rit != vl.rend(); --rit) {
+            std::string a = *rit;   std::cout << a << " ";
+        }
+
+        std::cout << std::endl;
+
+        std::cout << "reverse distance = " << std::distance(vl.rbegin(), vl.rend()) << std::endl;
+        std::vector<int> v {1, 2, 3, 4, 5};
+        for (auto erit = vl.rend(); erit != vl.rbegin();) {
+            auto a = *(--erit);
+            std::cout << a << endl;
+        }
+
+        std::cout << std::endl;
+        auto i = vl.rend().base();
+        for (; i != vl.end(); ++i) {
+            std::string a = *i;
+            std::cout << a << " ";
+        }
     }*/
 }
