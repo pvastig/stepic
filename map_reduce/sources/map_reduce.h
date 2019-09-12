@@ -50,37 +50,35 @@ auto map_reduce2(It p, It q, UnaryOp f1, BinaryOp f2)
 
 void runMapReduce()
 {
-    std::list<int> l = {1,2,3,4,5,6,7,8,9,10};
-    //std::list<int> l = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-    //std::list<int> l = {1,1,1};
-    //std::list<string> l = {"1", "2", "3","4", "5","6", "7", "8", "9"};
-    // параллельное суммирование в 3 потока
-    /*auto sum = map_reduce(l.begin(), l.end(),
-        [](int i){return i;},
-        std::plus<int>(), 10);*/
-    auto sum = map_reduce(l.begin(), l.end(),
-        [](int i){return i;},
-        [](int n1, int n2){return n1*n2;}, 2);
-    cout << sum << endl;
+    {
+        std::list<int> l = {1,2,3,4,5,6,7,8,9,10};
+        for (size_t i = 1; i <= 10; ++i)
+        {
+            auto sum = map_reduce(l.begin(), l.end(),
+                [](int i){return i;},
+                std::plus<int>(), i);
+            assert(sum == 55);
 
-    /*auto sum1 = map_reduce2(l.begin(), l.end(),
-        [](int i){return i;},
-        std::plus<int>());*/
-    auto sum1 = map_reduce2(l.begin(), l.end(),
-        [](int i){return i;},
-        [](int n1, int n2){return n1*n2;});
-    cout << "real: " << sum1 << endl;
+            auto has_even = map_reduce(l.begin(), l.end(),
+                [](int i){return i % 2 == 0;},
+                std::logical_or<bool>(), i);
+            assert(has_even == 1);
+        }
+    }
 
-    assert(sum == sum1);
+    {
+        std::list<int> l = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        for (size_t i = 1; i <= 10; ++i)
+        {
+            auto sum = map_reduce(l.begin(), l.end(),
+                [](int i){return i;},
+                std::plus<int>(), i);
+            assert(sum == 10);
 
-    // проверка наличия чётных чисел в четыре потока
-    /*auto has_even = map_reduce(l.begin(), l.end(),
-        [](int i){return i % 2 == 0;},
-        std::logical_or<bool>(), 4);
-    cout << has_even << endl;
-
-    auto has_even2 = map_reduce2(l.begin(), l.end(),
-        [](int i){return i % 2 == 0;},
-        std::logical_or<bool>());
-    cout << "real: " << has_even2 << endl;*/
+            auto has_even = map_reduce(l.begin(), l.end(),
+                [](int i){return i % 2 == 0;},
+                std::logical_or<bool>(), i);
+            assert(has_even == 0);
+        }
+    }
 }
