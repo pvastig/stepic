@@ -3,11 +3,15 @@ cmake_minimum_required (VERSION 2.6)
 set (PROJECT stepic)
 
 project (${PROJECT})
+set(CMAKE_CXX_STANDARD 17)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 include_directories (../)
 
 set (LIBRARIES
 		intergrate
+                map_reduce
 		own_iterator
 		rss)
 
@@ -30,5 +34,7 @@ source_group ("Header Files" FILES ${HEADERS})
 source_group ("Source Files" FILES ${SOURCES})
 
 add_executable (${PROJECT} ${HEADERS} ${SOURCES})
+
+target_link_libraries(${PROJECT} Threads::Threads)
 
 target_link_libraries (${PROJECT} ${LIBRARIES})
