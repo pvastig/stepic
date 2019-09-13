@@ -7,44 +7,45 @@
 #include <vector>
 #include <numeric>
 
-using namespace std;
-
-template<class It, class UnaryOp, class BinaryOp>
-auto map_reduce(It p, It q, UnaryOp f1, BinaryOp f2, size_t threads)->decltype(f1(*p))
+template<class Iterator, class UnaryOp, class BinaryOp>
+auto map_reduce(Iterator p, Iterator q, UnaryOp f1, BinaryOp f2, size_t numThreads)->decltype(f1(*p))
 {
-    auto calcPartSum = [f1, f2](It it, size_t dist)
+    auto calcPartSum = [f1, f2](Iterator p, Iterator q)
     {
-        auto res = f1(*it);
-        for (decltype(dist) i = 1; i < dist; ++i)
-            res = f2(res, f1(*++it));
+        auto res = f1(*p);
+        while (++p != q)
+            res = f2(res, f1(*p));
         return res;
     };
 
-    using resType = decltype(f1(*p));
-    std::vector<std::future<resType>> result(threads);
-    auto const len  = std::distance(p, q);
-    if (!len)
-        return resType{};
+    using ResType  = decltype(f1(*p));
+    auto const len = std::distance(p, q);
+    if (!len || len < 0)
+        return ResType{};
 
-    if (threads > len)
-        threads = 2;
+    if (numThreads > static_cast<size_t>(len))
+        return ResType{};
 
-    auto const r    = static_cast<size_t>(len) % threads;
-    auto const step = static_cast<size_t>(len) / threads;
-    //TODO: rework using iterators
-    result.push_back(std::async(std::launch::async, calcPartSum, p, step+r));
-    advance(p, step + r);
-    for (size_t i = 1; i < threads; ++i)
+    auto const blockSize = static_cast<size_t>(len) / numThreads;
+    std::vector<std::future<ResType>> threads(numThreads-1);
+    auto blockStart = p;
+    for (size_t i = 0; i < (numThreads-1); ++i)
     {
-        result.push_back(std::async(std::launch::async, calcPartSum, p, step));
-        advance(p, step);
+        auto blockEnd = blockStart;
+        advance(blockEnd, blockSize);
+        threads[i] = std::async(std::launch::async, calcPartSum, blockStart, blockEnd);
+        blockStart = blockEnd;
     }
 
-    auto res = result.begin()->get();
-    for (auto it = std::next(result.begin()); it != result.end(); ++it)
-        res = f2(res, it->get());
+    std::vector<ResType> results(numThreads);
+    results.reserve(numThreads);
+    auto res = calcPartSum(blockStart, q);
+    for (auto && thread : threads)
+        results.push_back(thread.get());
+    results.push_back(res);
 
-    return res;
+    return std::accumulate(results.begin(), results.end(), ResType(),
+                           [f2](ResType l, ResType r) { return  f2(l, r); });
 }
 
 template<class It, class UnaryOp, class BinaryOp>
@@ -52,47 +53,48 @@ auto map_reduce_one_thread(It p, It q, UnaryOp f1, BinaryOp f2)
 {
     auto res = f1(*p);
     while(++p != q)
-    {
         res = f2(res, f1(*p));
-    }
     return res;
 }
 
-template<class It, class UnaryOp, class BinaryOp>
-auto map_reduce2(It p, It q, UnaryOp f1, BinaryOp f2, size_t numThreads)->decltype(f1(*p))
+template<class Iterator, class UnaryOp, class BinaryOp>
+auto map_reduce2(Iterator p, Iterator q, UnaryOp f1, BinaryOp f2, size_t numThreads)->decltype(f1(*p))
 {
-    auto calcPartSum = [f1, f2](It it, size_t dist)
+    auto calcPartSum = [f1, f2](Iterator p, Iterator q)
     {
-        auto res = f1(*it);
-        for (decltype(dist) i = 1; i < dist; ++i)
-            res = f2(res, f1(*++it));
+        auto res = f1(*p);
+        while (++p != q)
+            res = f2(res, f1(*p));
         return res;
     };
 
-    std::vector<std::thread> threads(numThreads);
-    std::vector<decltype(f1(*p))> results(numThreads);
-    auto const len  = std::distance(p, q);
-    auto const r    = static_cast<size_t>(len) % numThreads;
-    auto const step = static_cast<size_t>(len) / numThreads;
-    threads.push_back(std::thread([&results, p, step = step + r, calcPartSum](){results[0] = calcPartSum(p, step);}));
-    advance(p, step + r);
-    for (size_t i = 1; i < numThreads; ++i)
+    using ResType  = decltype(f1(*p));
+    auto const len = std::distance(p, q);
+    if (!len || len < 0)
+        return ResType{};
+
+    if (numThreads > static_cast<size_t>(len))
+        return ResType{};
+
+    std::vector<ResType> results(numThreads);
+    auto const blockSize = static_cast<size_t>(len) / numThreads;
+    std::vector<std::thread> threads(numThreads-1);
+    auto blockStart = p;
+    for (size_t i = 0; i < (numThreads-1); ++i)
     {
-        threads.push_back(std::thread([&results,i, p, step, calcPartSum]() { results[i] =calcPartSum(p, step);}));
-        advance(p, step);
+        auto blockEnd = blockStart;
+        advance(blockEnd, blockSize);
+        threads[i] = std::thread([&results, i, calcPartSum, blockStart, blockEnd]()
+                                 { results[i] = calcPartSum(blockStart, blockEnd); });
+        blockStart = blockEnd;
     }
 
+    results[numThreads-1] = calcPartSum(blockStart, q);
     for (auto & thread : threads)
-    {
-        if(thread.joinable())
             thread.join();
-    }
 
-    auto res = *results.begin();
-    for (auto it = std::next(results.begin()); it != results.end(); ++it)
-        res = f2(res, *it);
-
-    return res;
+    return std::accumulate(results.begin(), results.end(), ResType(),
+                           [f2](ResType l, ResType r) { return  f2(l, r); });
 }
 
 void runMapReduce()
@@ -104,6 +106,7 @@ void runMapReduce()
             auto sum = map_reduce2(l.begin(), l.end(),
                 [](int i){return i;},
                 std::plus<int>(), i);
+            cout << sum << endl;
             assert(sum == 55);
 
             auto has_even = map_reduce2(l.begin(), l.end(),
