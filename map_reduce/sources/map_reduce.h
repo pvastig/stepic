@@ -106,7 +106,7 @@ void runMapReduce()
             auto sum = map_reduce2(l.begin(), l.end(),
                 [](int i){return i;},
                 std::plus<int>(), i);
-            cout << sum << endl;
+            std::cout << sum << std::endl;
             assert(sum == 55);
 
             auto has_even = map_reduce2(l.begin(), l.end(),
