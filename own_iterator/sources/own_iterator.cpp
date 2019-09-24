@@ -8,14 +8,20 @@ void runTest()
     {
         //empty case
         VectorList<int> vl;
+        cout << "distance:" << std::distance(vl.begin(), vl.end()) << endl;
+        assert(std::distance(vl.begin(), vl.end()) == 0);
+    }
+    {
+        VectorList<int> vl;
         std::vector<int> v{};
         vl.append(v.begin(), v.end());
         auto b = vl.begin();
         assert(b == vl.begin());
+         cout << "distance:" << std::distance(vl.begin(), vl.end()) << endl;
         assert(std::distance(vl.begin(), vl.end()) == 0);
     }
     {
-        /*VectorList<int> vl;
+        VectorList<int> vl;
         vector<int> v1 {1};
         vl.append(v1.begin(), v1.end());
         std::cout << "Test one list.vector = 1\n" << std::endl;
@@ -62,7 +68,7 @@ void runTest()
         for (auto i = vl.rbegin(); i != vl.rend(); ++i)
             assert(*i == 1);
         for (auto i = vl.rend(); i != vl.rbegin(); --i)
-            assert(*i == 1);
+            assert(*i == 0);
         for (auto i = vl.end(); i != vl.begin(); --i)
             assert(i == vl.end());
 
@@ -70,7 +76,8 @@ void runTest()
         assert(*found == 1);
         found = std::find(vl.begin(), vl.end(), 10);
         assert(found == vl.end());
-*/
+        /*found = std::find(vl.rbegin(), vl.rend(), 1);
+        assert(*found == 1);*/
     }
 
     {
@@ -78,7 +85,7 @@ void runTest()
         vector<int> v1 {1, 2, 3};
         vl.append(v1.begin(), v1.end());
         std::cout << "Test one list.vector = 3\n" << std::endl;
-        /*{
+        {
             auto it = vl.begin();
             assert(*it == 1);
             ++it;
@@ -121,30 +128,22 @@ void runTest()
             ++it;
             ++it;
             assert(it == vl.rend());
-        }*/
-
-        /*assert(std::distance(vl.begin(), vl.end()) == 3);
-        assert(std::distance(vl.rbegin(), vl.rend()) == 3);
-        std::vector<int> v {1, 2, 3};
-        assert(std::equal(vl.begin(), vl.end(), v.begin()));
-        assert(std::equal(vl.rbegin(), vl.rend(), v.rbegin()));*/
-        size_t count = 0;
-        std::vector<int> v {1, 2, 3};
-        /*for (auto i = vl.rend(); i != vl.rbegin(); --i)
-        {
-            cout << *i << endl;
-            //assert(*i == v[count++]);
-        }*/
-        count = 0;
-        for (auto i = vl.end(); i != vl.begin(); --i)
-        {
-            cout << *i << endl;
-            //assert(*i == v[++count]);
         }
 
-        /*for (auto i = vl.rbegin(); i != vl.rend(); ++i)
-            cout << *i << " ";*/
-
+        assert(std::distance(vl.begin(), vl.end()) == 3);
+        assert(std::distance(vl.rbegin(), vl.rend()) == 3);
+        assert(std::equal(vl.begin(), vl.end(), v1.begin()));
+        assert(std::equal(vl.rbegin(), vl.rend(), v1.rbegin()));
+        size_t count = 1;
+        for (auto i = vl.rend(); i != vl.rbegin(); --i)
+        {
+            cout << *i << endl;
+           // assert(i*);
+        }
+        for (auto i = vl.begin(); i != vl.end(); ++i)
+            cout << *i << endl;
+        for (auto i = vl.end(); i != vl.begin(); --i)
+            cout << *i << endl;
     }
 
     /*VectorList<int> vlist;

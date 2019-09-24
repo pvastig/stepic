@@ -11,7 +11,7 @@ class VectorList
 private:
     using VectT  = std::vector<T>;
     using ListT = std::list<VectT>;
-    ListT data_;
+    ListT data;
 
 public:
     using value_type = T;
@@ -29,7 +29,7 @@ public:
     void append(It p, It q) // определена снаружи
     {
         if (p != q)
-            data_.push_back(VectT(p,q));
+            data.push_back(VectT(p,q));
     }
 
     bool empty() const { return size() == 0; }
@@ -37,11 +37,10 @@ public:
     size_t size() const
     {
         size_t s = 0;
-        for (auto const & item : data_)
+        for (auto const & item : data)
             s += item.size();
         return s;
     }
-
 
     struct BidirectionalIterator : std::iterator<std::bidirectional_iterator_tag,
                                                  T const>
@@ -79,6 +78,7 @@ public:
             if (data->cend() == data->cbegin())
                 return *this;
 
+            assert(!data->empty());
             auto & vec = *clit;
             if (cvit != vec.cend())
                 ++cvit;
@@ -93,8 +93,6 @@ public:
                 clit = data->cend();
                 cvit = data->cend()->cend();
             }
-
-
             return *this;
         }
 
@@ -134,6 +132,7 @@ public:
             //if (cvit != vec.cbegin())
             {
                 --cvit;
+                //cout << *cvit << " ";
             }
            // --cvit;
             //cout << *cvit << " ";
@@ -165,14 +164,24 @@ public:
 
         bool operator!=(BidirectionalIterator const & other) const
         {
-            cout << "\n==" << boolalpha << (clit != other.clit) << " " << (cvit != other.cvit) << endl;
-            return (clit != other.clit) && (cvit != other.cvit);
+            //cout << "\n!=" << boolalpha << (clit != other.clit) << " " << (cvit != other.cvit) << endl;
+            return (clit != other.clit) || (cvit != other.cvit);
         }
     };
 
     using const_iterator = BidirectionalIterator;
-    const_iterator begin() const { return const_iterator(&data_, data_.cbegin(), data_.cbegin()->cbegin());}
-    const_iterator end()   const { return const_iterator(&data_, data_.cend(), data_.cend()->cend()); }
+    const_iterator begin() const
+    {
+        if (data.cbegin() == data.cend())
+            return const_iterator();
+        return const_iterator(&data, data.cbegin(), data.cbegin()->cbegin());
+    }
+    const_iterator end() const
+    {
+        if (data.cbegin() == data.cend())
+            return const_iterator();
+        return const_iterator(&data, data.cend(), data.cend()->cend());
+    }
 
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
