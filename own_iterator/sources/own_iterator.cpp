@@ -17,7 +17,7 @@ void runTest()
         vl.append(v.begin(), v.end());
         auto b = vl.begin();
         assert(b == vl.begin());
-         cout << "distance:" << std::distance(vl.begin(), vl.end()) << endl;
+        cout << "distance:" << std::distance(vl.begin(), vl.end()) << endl;
         assert(std::distance(vl.begin(), vl.end()) == 0);
     }
     {
@@ -89,9 +89,15 @@ void runTest()
             auto it = vl.begin();
             assert(*it == 1);
             ++it;
+            assert(*it == 2);
+            ++it;
+            assert(*it == 3);
             ++it;
             assert(it == vl.end());
             --it;
+            assert(*it == 3);
+            --it;
+            assert(*it == 2);
             --it;
             assert(*it == 1);
             assert(it == vl.begin());
@@ -100,32 +106,51 @@ void runTest()
             auto it = vl.end();
             assert(it == vl.end());
             --it;
+            assert(*it == 3);
+            --it;
+            assert(*it == 2);
             --it;
             assert(*it == 1);
             assert(it == vl.begin());
             ++it;
+            assert(*it == 2);
+            ++it;
+            assert(*it == 3);
             ++it;
             assert(it == vl.end());
         }
         {
             auto it = vl.rbegin();
+            assert(*it == 3);
+            ++it;
             assert(*it == 2);
             ++it;
+            assert(*it == 1);
             ++it;
             assert(it == vl.rend());
             --it;
+            assert(*it == 1);
             --it;
             assert(*it == 2);
+            --it;
+            assert(*it == 3);
+            --it;
             assert(it == vl.rbegin());
         }
         {
             auto it = vl.rend();
             assert(it == vl.rend());
             --it;
+            assert(*it == 1);
             --it;
             assert(*it == 2);
+            --it;
+            assert(*it == 3);
             assert(it == vl.rbegin());
             ++it;
+            assert(*it == 2);
+            ++it;
+            assert(*it == 1);
             ++it;
             assert(it == vl.rend());
         }
@@ -134,16 +159,16 @@ void runTest()
         assert(std::distance(vl.rbegin(), vl.rend()) == 3);
         assert(std::equal(vl.begin(), vl.end(), v1.begin()));
         assert(std::equal(vl.rbegin(), vl.rend(), v1.rbegin()));
-        size_t count = 1;
         for (auto i = vl.rend(); i != vl.rbegin(); --i)
         {
             cout << *i << endl;
-           // assert(i*);
+            // assert(i*);
         }
         for (auto i = vl.begin(); i != vl.end(); ++i)
             cout << *i << endl;
         for (auto i = vl.end(); i != vl.begin(); --i)
             cout << *i << endl;
+
     }
 
     /*VectorList<int> vlist;
