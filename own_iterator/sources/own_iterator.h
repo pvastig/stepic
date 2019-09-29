@@ -3,15 +3,14 @@
 #include <cassert>
 #include <iostream>
 
-using namespace std;
 
 template<class T>
 class VectorList
 {
 private:
     using VectT  = std::vector<T>;
-    using ListT = std::list<VectT>;
-    ListT data;
+    using ListT  = std::list<VectT>;
+    ListT data_;
 
 public:
     using value_type = T;
@@ -23,13 +22,11 @@ public:
     VectorList & operator=(VectorList &&)     = default;
     VectorList & operator=(VectorList const &) = default;
 
-    // метод, который будет использоваться для заполнения VectorList
-    // гарантирует, что в списке не будет пустых массивов
     template<class It>
-    void append(It p, It q) // определена снаружи
+    void append(It p, It q)
     {
         if (p != q)
-            data.push_back(VectT(p,q));
+            data_.push_back(VectT(p,q));
     }
 
     bool empty() const { return size() == 0; }
@@ -37,7 +34,7 @@ public:
     size_t size() const
     {
         size_t s = 0;
-        for (auto const & item : data)
+        for (auto const & item : data_)
             s += item.size();
         return s;
     }
@@ -75,24 +72,15 @@ public:
 
         BidirectionalIterator & operator++()
         {
-            if (data->cend() == data->cbegin())
+            ++cvit;
+            if (cvit != clit->cend())
                 return *this;
 
-            assert(!data->empty());
-            auto & vec = *clit;
-            if (cvit != vec.cend())
-                ++cvit;
-            /*if (cvit == vec.cend() && vec != data->back())
-            {
-                ++clit;
-                cvit = clit->cbegin();
-            }*/
+            ++clit;
+            if (clit == data->cend())
+                return *this;
 
-            if (cvit == vec.cend() && vec == data->back())
-            {
-                clit = data->cend();
-                cvit = data->cend()->cend();
-            }
+            cvit = clit->cbegin();
             return *this;
         }
 
@@ -105,38 +93,23 @@ public:
 
         BidirectionalIterator & operator--()
         {
-            if (data->cend() == data->cbegin())
-                return *this;
-
             if (clit == data->cend())
             {
                 --clit;
                 auto & vec = *clit;
                 cvit = vec.cend();
-                //return *this;
             }
-            auto & vec = *clit;
-            /*if (cvit == vec.cbegin() && vec != data->front())
-            {
-                --clit;
-                auto & vec = *clit;
-                cvit = vec.cend();
-                //assert(0);
-            }*/
-            if (cvit == vec.cbegin() && vec == data->front())
-            {
-                clit = data->begin();
-                cvit = data->begin()->begin();
-            }
+            --cvit;
+            if (cvit != --clit->cbegin())
+                return *this;
 
-            //if (cvit != vec.cbegin())
-            {
-                --cvit;
-                //cout << *cvit << " ";
-            }
-           // --cvit;
-            //cout << *cvit << " ";
+            if (clit == --data->cbegin())
+                return *this;
+
+            --clit;
+            cvit = --clit->cend();
             return *this;
+
         }
 
         BidirectionalIterator operator--(int)
@@ -158,29 +131,30 @@ public:
 
         bool operator==(BidirectionalIterator const & other) const
         {
-            //cout << "\n==" << boolalpha << (clit == other.clit) << " " << (cvit == other.cvit) << endl;
+            if (clit == data->end())
+                return other.clit == data->end();
             return (clit == other.clit) && (cvit == other.cvit);
         }
 
         bool operator!=(BidirectionalIterator const & other) const
         {
-            //cout << "\n!=" << boolalpha << (clit != other.clit) << " " << (cvit != other.cvit) << endl;
-            return (clit != other.clit) || (cvit != other.cvit);
+            return !(*this == other);
         }
     };
 
     using const_iterator = BidirectionalIterator;
     const_iterator begin() const
     {
-        if (data.cbegin() == data.cend())
+        if (data_.cbegin() == data_.cend())
             return const_iterator();
-        return const_iterator(&data, data.cbegin(), data.cbegin()->cbegin());
+        return const_iterator(&data_, data_.cbegin(), data_.cbegin()->cbegin());
     }
     const_iterator end() const
     {
-        if (data.cbegin() == data.cend())
+        if (data_.cbegin() == data_.cend())
             return const_iterator();
-        return const_iterator(&data, data.cend(), data.cend()->cend());
+        typename BidirectionalIterator::ConstVecIt cvit;
+        return const_iterator{&data_, data_.cend(), cvit};
     }
 
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
