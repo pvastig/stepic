@@ -135,7 +135,7 @@ void runTest()
             assert(*it == 2);
             --it;
             assert(*it == 3);
-            --it;
+            //--it;
             assert(it == vl.rbegin());
         }
         {
@@ -301,8 +301,9 @@ void runTest()
             assert(*it == 8);
             --it;
             assert(*it == 9);
-            --it;
             assert(it == vl.rbegin());
+            --it;
+            assert(it != vl.rbegin());
         }
         {
             auto it = vl.rend();
