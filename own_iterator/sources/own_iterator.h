@@ -38,19 +38,18 @@ public:
         return s;
     }
 
-    struct BidirectionalIterator : std::iterator<std::bidirectional_iterator_tag,
-                                                 T const>
+    template<class Type, class ListIt, class VecIt,
+             class UnqualifiedType = std::remove_cv_t<Type>>
+    struct BidirectionalIterator : std::iterator<std::bidirectional_iterator_tag, UnqualifiedType>
     {
         ListT const * data = nullptr;
-        using ConstListIt = typename ListT::const_iterator;
-        using ConstVecIt = typename VectT::const_iterator;
-        ConstListIt clit;
-        ConstVecIt  cvit;
+        ListIt lit;
+        VecIt  vit;
 
-        explicit BidirectionalIterator(ListT const * data, ConstListIt clit, ConstVecIt  cvit)
+        explicit BidirectionalIterator(ListT const * data, ListIt lit, VecIt vit)
             : data(data)
-              , clit(clit)
-              , cvit(cvit)
+              , lit(lit)
+              , vit(vit)
         {
         }
 
@@ -58,8 +57,8 @@ public:
 
         BidirectionalIterator(BidirectionalIterator const & other)
             : data(other.data)
-              , clit(other.clit)
-              , cvit(other.cvit)
+              , lit(other.lit)
+              , vit(other.vit)
         {
         }
 
@@ -71,8 +70,8 @@ public:
 
         BidirectionalIterator & operator++()
         {
-            if(++cvit == clit->cend())
-                cvit = (++clit)->cbegin();
+            if(++vit == lit->end())
+                vit = (++lit)->begin();
             return *this;
         }
 
@@ -85,9 +84,9 @@ public:
 
         BidirectionalIterator & operator--()
         {
-            if(cvit == clit->cbegin())
-                cvit = (--clit)->cend();
-            --cvit;
+            if(vit == lit->begin())
+                vit = (--lit)->end();
+            --vit;
             return *this;
         }
 
@@ -98,19 +97,29 @@ public:
             return tmp;
         }
 
-        T const * operator->() const
+        /*T const * operator->() const
         {
-            return &(*cvit);
+            return &(*vit);
         }
 
         T const & operator*() const
         {
-            return *cvit;
+            return *vit;
+        }*/
+
+        T & operator*()
+        {
+            return *vit;
+        }
+
+        T * operator->()
+        {
+            return &(*vit);
         }
 
         bool operator==(BidirectionalIterator const & other) const
         {
-            return (cvit == other.cvit);
+            return vit == other.vit;
         }
 
         bool operator!=(BidirectionalIterator const & other) const
@@ -119,23 +128,50 @@ public:
         }
     };
 
-    using const_iterator = BidirectionalIterator;
+    using iterator = BidirectionalIterator<T, typename ListT::iterator, typename VectT::iterator>;
+    using const_iterator = BidirectionalIterator<T const, typename ListT::const_iterator, typename VectT::const_iterator>;
+    iterator begin()
+    {
+        if (data_.cbegin() == data_.cend())
+            return iterator();
+        return iterator(&data_, data_.begin(), data_.begin()->begin());
+    }
+
+    iterator end()
+    {
+        if (data_.cbegin() == data_.cend())
+            return iterator();
+        return iterator(&data_, data_.end(), data_.end()->begin());
+    }
+
     const_iterator begin() const
     {
-        if (data_.cbegin() == data_.cend())
-            return const_iterator();
         return const_iterator(&data_, data_.cbegin(), data_.cbegin()->cbegin());
     }
+
     const_iterator end() const
     {
-        if (data_.cbegin() == data_.cend())
-            return const_iterator();
         return const_iterator(&data_, data_.cend(), data_.cend()->cbegin());
     }
 
+    const_iterator cbegin() const
+    {
+        return begin();
+    }
+
+    const_iterator cend() const
+    {
+        return end();
+    }
+
+    using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend()   const { return const_reverse_iterator(begin()); }
+
+    reverse_iterator rbegin() { return reverse_iterator(end()); }
+    reverse_iterator rend()   { return reverse_iterator(begin()); }
+
+    const_reverse_iterator rbegin() const { return const_reverse_iterator(cend()); }
+    const_reverse_iterator rend()   const { return const_reverse_iterator(cbegin()); }
 };
 
 void runTest();
