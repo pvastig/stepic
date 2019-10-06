@@ -5,6 +5,7 @@ set (PROJECT stepic)
 project (${PROJECT})
 set(CMAKE_CXX_STANDARD 17)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+
 find_package(Threads REQUIRED)
 
 include_directories (../)
@@ -12,6 +13,7 @@ include_directories (../)
 set (LIBRARIES
 		intergrate
                 map_reduce
+		meta
 		own_iterator
 		rss)
 
