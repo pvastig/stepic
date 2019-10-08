@@ -1,10 +1,10 @@
 #include "meta.h"
 
+#include <cassert>
 #include <functional>
 #include <iostream>
 #include <limits>
 #include <tuple>
-#include <type_traits>
 
 namespace Fibonacci {
 template <int N>
@@ -140,13 +140,168 @@ template <template <int, int> class MetaFun>
 struct Zip<IntList<>, IntList<>, MetaFun> {
   using type = IntList<>;
 };
-}  // namespace IntigerList
+template <int m = 0, int kg = 0, int s = 0, int A = 0, int K = 0, int mol = 0,
+          int cd = 0>
+using Dimension = IntList<m, kg, s, A, K, mol, cd>;
 
 // бинарная метафункция
 template <int a, int b>
 struct Plus {
   static int const value = a + b;
 };
+
+template <int a, int b>
+struct Minus {
+  static int const value = a - b;
+};
+
+template <class Type>
+class Quantity {
+ public:
+  Quantity() {}
+  explicit Quantity(double value) : m_value(value) {}
+  template <class OtherType>
+  Quantity(Quantity<OtherType> const& list) : m_value(list.value()) {}
+  double value() const { return m_value; }
+
+ private:
+  Type m_typeList;
+  double m_value;
+};
+
+template <class OtherType, class Type,
+          class RetType = Quantity<typename Zip<OtherType, Type, Plus>::type>>
+auto operator+(Quantity<OtherType> const& l, Quantity<Type> const& r) {
+  return RetType(l.value() + r.value());
+}
+
+template <class Type>
+auto operator+(Quantity<Type> const& l, double value) {
+  return Quantity<Type>(l.value() + value);
+}
+
+template <class Type>
+auto operator+(double value, Quantity<Type> const& l) {
+  return (l + value);
+}
+
+template <class OtherType, class Type,
+          class RetType = Quantity<typename Zip<OtherType, Type, Minus>::type>>
+auto operator-(Quantity<OtherType> const& l, Quantity<Type> const& r) {
+  return RetType(l.value() - r.value());
+}
+
+template <class Type>
+auto operator-(Quantity<Type> const& l, double value) {
+  return Quantity<Type>(l.value() - value);
+}
+
+template <class Type, class RetType = Quantity<Type>>
+RetType operator-(double value, Quantity<Type> const& l) {
+  return RetType(value - l.value());
+}
+
+template <class OtherType, class Type,
+          class RetType = Quantity<typename Zip<OtherType, Type, Plus>::type>>
+auto operator*(Quantity<OtherType> const& l, Quantity<Type> const& r) {
+  return RetType(l.value() * r.value());
+}
+
+template <class Type>
+auto operator*(Quantity<Type> const& l, double value) {
+  return Quantity<Type>(l.value() * value);
+}
+
+template <class Type>
+auto operator*(double value, Quantity<Type> const& l) {
+  return Quantity<Type>(value * l.value());
+}
+
+template <class OtherType, class Type,
+          class RetType = Quantity<typename Zip<OtherType, Type, Minus>::type>>
+auto operator/(Quantity<OtherType> const& l, Quantity<Type> const& r) {
+  return RetType(l.value() / r.value());
+}
+
+template <class Type>
+auto operator/(Quantity<Type> const& l, double value) {
+  return Quantity<Type>(l.value() / value);
+}
+
+template <class Type>
+auto operator/(double value, Quantity<Type> const& l) {
+  return Quantity<Type>(value / l.value());
+}
+
+using NumberQ = Quantity<Dimension<>>;  // число без размерности
+using LengthQ = Quantity<Dimension<1>>;           // метры
+using MassQ = Quantity<Dimension<0, 1>>;          // килограммы
+using TimeQ = Quantity<Dimension<0, 0, 1>>;       // секунды
+using VelocityQ = Quantity<Dimension<1, 0, -1>>;  // метры в секунду
+using AccelQ =
+    Quantity<Dimension<1, 0, -2>>;  // ускорение, метры в секунду в квадрате
+using ForceQ = Quantity<Dimension<1, 1, -2>>;  // сила в ньютонах
+}  // namespace IntigerList
+
+void testQuantity() {
+  using namespace IntigerList;
+  using namespace std;
+  {
+    LengthQ q1{300};
+    auto q = q1 + 100;
+    assert(q.value() == 400.0);
+    q = 100 + q1;
+    assert(q.value() == 400.0);
+  }
+  {
+    LengthQ q1{30000};
+    LengthQ q2{20000};
+    auto q = q1 + q2;
+    cout << q.value() << endl;
+  }
+  {
+    LengthQ q1{30000};
+    LengthQ q2{20000};
+    auto q = q1 - q2;
+    cout << q.value() << endl;
+  }
+  {
+    LengthQ q1{30};
+    LengthQ q2{20};
+    auto q = q1 * q2;
+    cout << q.value() << endl;
+  }
+  {
+    LengthQ q1{30};
+    LengthQ q2{10};
+    auto q = q1 / q2;
+    cout << q.value() << endl;
+  }
+  {
+    LengthQ q1{30000};
+    NumberQ q2{20000};
+    auto q = q1 + q2;
+    cout << q.value() << endl;
+  }
+  {
+    LengthQ l{30000};     // 30 км
+    TimeQ t{10 * 60};     // 10 минут
+                          // вычисление скорости
+    VelocityQ v = l / t;  // результат типа VelocityQ, 50 м/с
+
+    AccelQ a{9.8};  // ускорение свободного падения
+    MassQ m{80};    // 80 кг
+    // сила притяжения, которая действует на тело массой 80 кг
+    ForceQ f = m * a;
+    cout << f.value() << endl;
+  }
+  {
+    // using Q1 = Quantity<IntList<-20, -18, -16, -14, -12, -10, -8>>;
+    int N = 2;
+    using Q1 = Quantity<IntList<-10, -9, -8, -7, -6, -5, -4>>;
+    Q1 a = Q1(N) + Q1(N * N);
+  }
+}
 
 void testTrsnsform() {
   using namespace IntigerList;
@@ -156,8 +311,8 @@ void testTrsnsform() {
   using L2 = IntList<1, 3, 7, 7, 2>;
 
   // результат применения — список с поэлементными суммами
-  using L3 = Zip<L1, L2, Plus>::type;  // IntList<2, 5, 10, 11, 7>
-  print<L3>();
+  // using L3 = Zip<L1, L2, Plus>::type;  // IntList<2, 5, 10, 11, 7>
+  // print<L3>();
 }
 
 void testApply() {
@@ -212,20 +367,39 @@ void testApply() {
     std::cout << apply(f, t) << std::endl;
   }
 }
-void runMetaTest() {
+
+void testList() {
+  using namespace std;
+  using namespace IntigerList;
+}
+
+void testLength() {
   using namespace std;
   using namespace IntigerList;
   /*using primes = IntList<2, 3, 4>;
   int head = primes::Head;
   using odd_primes = primes::Tail;
-  constexpr size_t len = Length<primes>::value;
-  using L2 = IntCons<1, primes>::type;*/
+  constexpr size_t len = Length<primes>::value;*/
+}
 
+void testIntCons() {
+  using namespace std;
+  using namespace IntigerList;
+  using primes = IntList<2, 3, 4>;
+  using L2 = IntCons<1, primes>::type;
+}
+
+void testGenerate() {
+  using namespace std;
+  using namespace IntigerList;
   // using L3 = LinearGenerate::Generate<1000>::type;
   // using L3 = LogarithmicGenerate::Generate<1000>::type;
-  // print<L3>();
-  // cout << Length<L3>::value << endl;
+}
 
+void runMetaTest() {
+  using namespace std;
+  using namespace IntigerList;
   // testApply();
-  testTrsnsform();
+  // testTrsnsform();
+  testQuantity();
 }
