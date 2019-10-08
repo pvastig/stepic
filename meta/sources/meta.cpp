@@ -117,22 +117,48 @@ auto& operator<<(std::basic_ostream<Ch, Tr>& os, const std::tuple<Args...>& t) {
 }
 
 template <typename F, typename... Args, int... Indices>
-auto applyImpl(F&& f, std::tuple<Args...>&& t, IntList<Indices...>)
-    -> decltype(std::forward<F>(f)(
-        std::get<Indices>(std::forward<std::tuple<Args...>>(t))...)) {
+typename std::result_of_t<F(Args...)> applyImpl(F&& f, std::tuple<Args...>&& t,
+                                                IntList<Indices...>) {
   return std::forward<F>(f)(
       std::get<Indices>(std::forward<std::tuple<Args...>>(t))...);
 }
 
 template <typename F, typename... Args, int N = sizeof...(Args)>
-auto apply(F&& f, std::tuple<Args...>&& t)
-    -> decltype(applyImpl(std::forward<F>(f),
-                          std::forward<std::tuple<Args...>>(t),
-                          typename LogarithmicGenerate::Generate<N>::type())) {
+typename std::result_of_t<F(Args...)> apply(F&& f, std::tuple<Args...>&& t) {
   return applyImpl(std::forward<F>(f), std::forward<std::tuple<Args...>>(t),
                    typename LogarithmicGenerate::Generate<N>::type());
 }
+
+template <typename L1, typename L2, template <int, int> class MetaFun>
+struct Zip {
+  using type = typename IntCons<
+      MetaFun<L1::Head, L2::Head>::value,
+      typename Zip<typename L1::Tail, typename L2::Tail, MetaFun>::type>::type;
+};
+
+template <template <int, int> class MetaFun>
+struct Zip<IntList<>, IntList<>, MetaFun> {
+  using type = IntList<>;
+};
 }  // namespace IntigerList
+
+// бинарная метафункция
+template <int a, int b>
+struct Plus {
+  static int const value = a + b;
+};
+
+void testTrsnsform() {
+  using namespace IntigerList;
+
+  // два списка одной длины
+  using L1 = IntList<1, 2, 3, 4, 5>;
+  using L2 = IntList<1, 3, 7, 7, 2>;
+
+  // результат применения — список с поэлементными суммами
+  using L3 = Zip<L1, L2, Plus>::type;  // IntList<2, 5, 10, 11, 7>
+  print<L3>();
+}
 
 void testApply() {
   {
@@ -200,5 +226,6 @@ void runMetaTest() {
   // print<L3>();
   // cout << Length<L3>::value << endl;
 
-  testApply();
+  // testApply();
+  testTrsnsform();
 }
