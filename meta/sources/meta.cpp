@@ -243,6 +243,35 @@ using AccelQ =
 using ForceQ = Quantity<Dimension<1, 1, -2>>;  // сила в ньютонах
 }  // namespace IntigerList
 
+template <class T, size_t (T::*)() = &T::size>
+struct check {
+  static const bool value = true;
+};
+
+template <class T>
+auto get_size(T const& t) -> decltype(std::declval<T>().size) {
+  return t.size;
+}
+
+template <class T>
+auto get_size(T const& t) -> decltype(std::declval<T>().size()) {
+  return t.size();
+}
+
+void testSelectDifferentImpl() {
+  std::string s{"Hello"};
+  size_t s_size = get_size(s);  // 5, вызывается метод size()
+  assert(s_size == 5);
+
+  struct Struct {
+    size_t size = 0;
+  };
+
+  Struct x{10};
+  size_t const x_size = get_size(x);  // 10, читается поле size
+  std::cout << x_size << std::endl;
+}
+
 void testQuantity() {
   using namespace IntigerList;
   using namespace std;
@@ -401,5 +430,6 @@ void runMetaTest() {
   using namespace IntigerList;
   // testApply();
   // testTrsnsform();
-  testQuantity();
+  // testQuantity();
+  testSelectDifferentImpl();
 }
