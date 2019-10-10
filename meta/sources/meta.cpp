@@ -63,7 +63,7 @@ struct ConcatLists<IntList<S1...>, IntList<S2...>> {
   using type = IntList<S1..., (sizeof...(S1) + S2)...>;
 };
 
-namespace LinearGenerate {
+namespace Linear {
 template <int N, int M = 0>
 struct Generate {
   using type = typename IntCons<M, typename Generate<N - 1, M + 1>::type>::type;
@@ -73,15 +73,20 @@ template <int M>
 struct Generate<0, M> {
   using type = IntList<>;
 };
-}  // namespace LinearGenerate
+}  // namespace Linear
 
-namespace LogarithmicGenerate {
+namespace Logarithmic {
 template <int N>
 struct Generate;
 
 template <>
 struct Generate<1> {
   using type = IntList<0>;
+};
+
+template <>
+struct Generate<0> {
+  using type = IntList<>;
 };
 
 template <int N>
@@ -91,7 +96,9 @@ struct Generate {
                            typename Generate<N - (N >> 1)>::type>::type;
 };
 
-}  // namespace LogarithmicGenerate
+}  // namespace Logarithmic
+
+// TODO: improve print
 template <typename IL>
 void print() {
   std::cout << IL::Head << " ";
@@ -117,16 +124,14 @@ auto& operator<<(std::basic_ostream<Ch, Tr>& os, const std::tuple<Args...>& t) {
 }
 
 template <typename F, typename... Args, int... Indices>
-typename std::result_of_t<F(Args...)> applyImpl(F&& f, std::tuple<Args...>&& t,
-                                                IntList<Indices...>) {
-  return std::forward<F>(f)(
-      std::get<Indices>(std::forward<std::tuple<Args...>>(t))...);
+auto applyImpl(F&& f, std::tuple<Args...> const& t, IntList<Indices...>) {
+  return std::forward<F>(f)(std::get<Indices>(t)...);
 }
 
 template <typename F, typename... Args, int N = sizeof...(Args)>
-typename std::result_of_t<F(Args...)> apply(F&& f, std::tuple<Args...>&& t) {
-  return applyImpl(std::forward<F>(f), std::forward<std::tuple<Args...>>(t),
-                   typename LogarithmicGenerate::Generate<N>::type());
+auto Apply(F&& f, std::tuple<Args...> const& t) {
+  return applyImpl(std::forward<F>(f), t,
+                   typename Logarithmic::Generate<N>::type());
 }
 
 template <typename L1, typename L2, template <int, int> class MetaFun>
@@ -140,6 +145,8 @@ template <template <int, int> class MetaFun>
 struct Zip<IntList<>, IntList<>, MetaFun> {
   using type = IntList<>;
 };
+
+// Description of new class for working with dimention
 template <int m = 0, int kg = 0, int s = 0, int A = 0, int K = 0, int mol = 0,
           int cd = 0>
 using Dimension = IntList<m, kg, s, A, K, mol, cd>;
@@ -155,6 +162,7 @@ struct Minus {
   static int const value = a - b;
 };
 
+// TODO: implement operators ==, !=, +=, -=, /=
 template <class Type>
 class Quantity {
  public:
@@ -241,6 +249,7 @@ using VelocityQ = Quantity<Dimension<1, 0, -1>>;  // метры в секунд�
 using AccelQ =
     Quantity<Dimension<1, 0, -2>>;  // ускорение, метры в секунду в квадрате
 using ForceQ = Quantity<Dimension<1, 1, -2>>;  // сила в ньютонах
+
 }  // namespace IntigerList
 
 template <class T, size_t (T::*)() = &T::size>
@@ -260,7 +269,7 @@ auto get_size(T const& t) -> decltype(std::declval<T>().size()) {
 
 void testSelectDifferentImpl() {
   std::string s{"Hello"};
-  size_t s_size = get_size(s);  // 5, вызывается метод size()
+  size_t s_size = get_size(s);
   assert(s_size == 5);
 
   struct Struct {
@@ -268,13 +277,12 @@ void testSelectDifferentImpl() {
   };
 
   Struct x{10};
-  size_t const x_size = get_size(x);  // 10, читается поле size
-  std::cout << x_size << std::endl;
+  size_t const x_size = get_size(x);
+  assert(x_size == 10);
 }
 
 void testQuantity() {
   using namespace IntigerList;
-  using namespace std;
   {
     LengthQ q1{300};
     auto q = q1 + 100;
@@ -286,49 +294,44 @@ void testQuantity() {
     LengthQ q1{30000};
     LengthQ q2{20000};
     auto q = q1 + q2;
-    cout << q.value() << endl;
+    assert(q.value() == 50000.0);
   }
   {
     LengthQ q1{30000};
     LengthQ q2{20000};
     auto q = q1 - q2;
-    cout << q.value() << endl;
+    assert(q.value() == 10000.0);
   }
   {
     LengthQ q1{30};
     LengthQ q2{20};
     auto q = q1 * q2;
-    cout << q.value() << endl;
+    assert(q.value() == 600.0);
   }
   {
     LengthQ q1{30};
     LengthQ q2{10};
     auto q = q1 / q2;
-    cout << q.value() << endl;
-  }
-  {
-    LengthQ q1{30000};
-    NumberQ q2{20000};
-    auto q = q1 + q2;
-    cout << q.value() << endl;
+    assert(q.value() == 3.0);
   }
   {
     LengthQ l{30000};     // 30 км
     TimeQ t{10 * 60};     // 10 минут
                           // вычисление скорости
     VelocityQ v = l / t;  // результат типа VelocityQ, 50 м/с
+    assert(v.value() == 50.0);
 
     AccelQ a{9.8};  // ускорение свободного падения
     MassQ m{80};    // 80 кг
     // сила притяжения, которая действует на тело массой 80 кг
     ForceQ f = m * a;
-    cout << f.value() << endl;
+    assert(f.value() == 784.0);
   }
   {
-    // using Q1 = Quantity<IntList<-20, -18, -16, -14, -12, -10, -8>>;
     int N = 2;
     using Q1 = Quantity<IntList<-10, -9, -8, -7, -6, -5, -4>>;
     Q1 a = Q1(N) + Q1(N * N);
+    assert(a.value() == 6.0);
   }
 }
 
@@ -338,84 +341,76 @@ void testTrsnsform() {
   // два списка одной длины
   using L1 = IntList<1, 2, 3, 4, 5>;
   using L2 = IntList<1, 3, 7, 7, 2>;
-
-  // результат применения — список с поэлементными суммами
-  // using L3 = Zip<L1, L2, Plus>::type;  // IntList<2, 5, 10, 11, 7>
+  // TODO: make check for 2 lists
+  using L3 = Zip<L1, L2, Plus>::type;  // IntList<2, 5, 10, 11, 7>
   // print<L3>();
 }
 
 void testApply() {
+  using namespace IntigerList;
   {
     auto f = [](int x, double y, double z) { return x + y + z; };
-    auto t = std::make_tuple(1.0, 2.0, 3);  // std::tuple<int, double, double>
-    std::cout << apply(f, t) << std::endl;
+    auto t = std::make_tuple(1.0, 2.0, 3);
+    assert(Apply(f, t) == 6.0);
   }
-
   {
     auto f = [](bool x, bool y) { return x == y; };
-    auto t = std::make_tuple(true, true);  // std::tuple<int, double, double>
-    std::cout << apply(f, t) << std::endl;
+    auto t = std::make_tuple(true, true);
+    assert(Apply(f, t) == 1.0);
   }
   {
     auto f = [](std::string x, std::string y) { return x + y; };
     auto t = std::make_tuple("Hello", " world");
-    std::cout << apply(f, t) << std::endl;
+    assert(Apply(f, t) == "Hello world");
   }
-
   {
     std::tuple<int, int> t;
     auto f = [](int x, int y) { return x + y; };
-    std::cout << apply(f, t) << std::endl;
+    assert(Apply(f, t) == 0);
   }
-
   {
     std::tuple<> t;
-    auto f = []() { return; };
-    apply(f, t);
+    auto f = []() { return false; };
+    assert(Apply(f, t) == false);
   }
-
   {
     std::tuple<const char*> t{"test char"};
     auto f = [](const char* ch) { return ch; };
-    std::cout << apply(f, t) << std::endl;
-  }
-
-  {
-    std::tuple<int, double, const char*, int, double, const char*> t{
-        1, 1.2, "test", 0, 5.0, "world"};
-    auto f = [](int, double, const char*, int, double, const char*) {
-      return 1;
-    };
-    std::cout << apply(f, t) << std::endl;
+    assert(Apply(f, t) == "test char");
   }
   {
     std::tuple<int, double, std::string> t{1, 2.0, "t"};
     auto f = [](int x2, double y2, std::string s2) {
       return x2 * y2 + s2.size();
     };
-    std::cout << apply(f, t) << std::endl;
+    assert(Apply(f, t) == 3.0);
   }
 }
 
 void testList() {
   using namespace std;
   using namespace IntigerList;
+  /*using primes = IntList<2, 3, 4>;
+  int head = primes::Head;
+  using odd_primes = primes::Tail;*/
+  // TODO: check integer list
 }
 
 void testLength() {
-  using namespace std;
   using namespace IntigerList;
-  /*using primes = IntList<2, 3, 4>;
-  int head = primes::Head;
-  using odd_primes = primes::Tail;
-  constexpr size_t len = Length<primes>::value;*/
+  {
+    using L = IntList<2, 3, 4>;
+    constexpr size_t len = Length<L>::value;
+    assert(len == 3);
+  }
 }
 
 void testIntCons() {
   using namespace std;
   using namespace IntigerList;
   using primes = IntList<2, 3, 4>;
-  using L2 = IntCons<1, primes>::type;
+  using L = IntCons<1, primes>::type;
+  // TODO: check list
 }
 
 void testGenerate() {
@@ -426,10 +421,9 @@ void testGenerate() {
 }
 
 void runMetaTest() {
-  using namespace std;
   using namespace IntigerList;
-  // testApply();
-  // testTrsnsform();
-  // testQuantity();
+  testApply();
+  testTrsnsform();
+  testQuantity();
   testSelectDifferentImpl();
 }
